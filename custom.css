@@ -1,0 +1,18 @@
+/* Vercel-style dark monochrome refinements */
+
+/* Keep code blocks and borders neutral in dark mode */
+.dark .dark\:bg-gray-900,
+.dark .dark\:bg-gray-950 {
+  background-color: #000000;
+}
+
+/* Subtle monochrome hairline borders */
+.dark {
+  --neuron-border: rgba(255, 255, 255, 0.1);
+}
+
+/* Tighten card and callout radii for a flatter, minimal look */
+a[class*="rounded-"],
+div[class*="rounded-2xl"] {
+  border-radius: 0.5rem;
+}
