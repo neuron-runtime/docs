@@ -41,7 +41,7 @@ flowchart LR
 
 <Steps>
   <Step title="Define">
-    Author an Assembly in TypeScript with `@neuron/sdk` or in YAML.
+    Author an Assembly in any language that implements the Neuron assembly protocol. Neuron ships with a TypeScript SDK (`@neuron/sdk`) and a YAML authoring surface, but it is language-agnostic: any language SDK or implementation that emits the canonical assembly format works.
   </Step>
   <Step title="Build">
     `neuron build` compiles sources into a canonical manifest, resolves and installs capability runtimes, and registers the assembly with N.O.R.E.
