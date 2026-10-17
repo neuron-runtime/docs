@@ -12,6 +12,7 @@
     "strict": false
   },
   "background": {
+    "decoration": "windows",
     "color": {
       "light": "#ffffff",
       "dark": "#000000"
@@ -33,7 +34,7 @@
   },
   "favicon": "/favicon.svg",
   "logo": {
-    "dark": "/logo/dark.svg",
+    "dark": "/logo/dark.png",
     "light": "/logo/light.svg"
   },
   "navigation": {

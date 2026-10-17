@@ -1,5 +1,0 @@
-<svg width="140" height="28" viewBox="0 0 140 28" fill="none" xmlns="http://www.w3.org/2000/svg">
-  <rect x="0" y="3" width="22" height="22" rx="6" fill="#FFFFFF"/>
-  <path d="M6.5 20V8H9L14.5 15.8V8H17V20H14.5L9 12.2V20H6.5Z" fill="#0A0A0A"/>
-  <text x="30" y="21" font-family="Inter, ui-sans-serif, system-ui, -apple-system, sans-serif" font-size="20" font-weight="600" fill="#FFFFFF" letter-spacing="-0.02em">Neuron</text>
-</svg>
