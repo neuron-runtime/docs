@@ -1,0 +1,57 @@
+---
+title: "Health"
+description: "Unauthenticated health check endpoint."
+---
+
+## Checking health
+
+`GET /health` returns the runtime's health status. It is the only route that does not require authentication, so it is safe to use as a liveness probe from monitoring tools, container orchestrators, or load balancers.
+
+```bash
+curl --unix-socket ~/.neuron/nore.sock \
+  http://localhost/health
+```
+
+Over TCP:
+
+```bash
+curl http://127.0.0.1:6000/health
+```
+
+## Response
+
+```json
+{
+  "message": "N.O.R.E. is healthy",
+  "status": 200,
+  "data": {
+    "capability": "nore"
+  }
+}
+```
+
+<ResponseField name="message" type="string">
+  Human-readable health summary.
+</ResponseField>
+
+<ResponseField name="status" type="integer">
+  HTTP status code (`200` when healthy).
+</ResponseField>
+
+<ResponseField name="data.capability" type="string">
+  Identifies the runtime as N.O.R.E.
+</ResponseField>
+
+## Readiness checks
+
+`GET /health` confirms that the API server is running and accepting connections. It does not check whether assemblies are registered or instances are running. A `200` response means the process is alive and the middleware chain is operational.
+
+<Note>
+The health endpoint reveals nothing beyond the fact that the process is running. It does not expose version, configuration, or assembly information.
+</Note>
+
+## Next steps
+
+- [API Overview](/api/overview) — transport, authentication, and conventions
+- [Assemblies](/api/assemblies) — register and run assemblies
+- [Instances](/api/instances) — manage instances and executions

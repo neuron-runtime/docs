@@ -1,0 +1,78 @@
+---
+title: "Other commands"
+description: "Reference for version, new, daemon, and completion commands."
+---
+
+These commands support project workflow and shell integration.
+
+## version
+
+Print the Neuron CLI version:
+
+```bash
+neuron version
+```
+
+You can also use the global flag from any command:
+
+```bash
+neuron --version
+```
+
+## new capability-runtime
+
+Scaffold a new capability runtime in the project:
+
+```bash
+neuron new capability-runtime
+```
+
+This creates the directory structure and metadata for a new capability runtime under the project's local root.
+
+## daemon
+
+Stop the legacy background daemon:
+
+```bash
+neuron daemon stop
+```
+
+<Note>
+The foreground project runtime (bare [`neuron`](/cli/project-runtime)) is the preferred way to run N.O.R.E. Use `daemon stop` only to clean up a legacy background daemon.
+</Note>
+
+## completion
+
+Generate shell completion scripts:
+
+```bash
+neuron completion bash
+neuron completion zsh
+neuron completion fish
+```
+
+Add the generated script to your shell profile to enable tab completion.
+
+## Hidden commands
+
+Two commands are hidden from help output but still functional:
+
+| Command | Description |
+| --- | --- |
+| `neuron install` | Hidden alias for installing the CLI or runtime components. |
+| `neuron provider` | Hidden alias for provider-related operations. |
+
+<Note>
+Hidden commands are not part of the supported public interface. They may change without notice.
+</Note>
+
+## Next steps
+
+<CardGroup cols={2}>
+  <Card title="CLI Overview" icon="book-open" href="/cli/overview">
+    Review all commands and global flags.
+  </Card>
+  <Card title="Project runtime" icon="server" href="/cli/project-runtime">
+    Start the foreground runtime.
+  </Card>
+</CardGroup>

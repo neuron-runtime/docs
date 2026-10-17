@@ -1,0 +1,57 @@
+---
+title: "CLI Overview"
+description: "How the Neuron CLI works and the global flags it supports."
+---
+
+The Neuron CLI (`neuron`) is the primary tool for building, registering, and running Neuron assemblies. It coordinates with N.O.R.E. (Neuron Operational Runtime Engine) to execute your project.
+
+## How it works
+
+- **You never talk to N.O.R.E. directly.** For normal development, you use the CLI. The CLI discovers the local project runtime and issues commands to it.
+- **Project runtime discovery.** When you run commands like `neuron run`, the CLI walks up from the current directory looking for `.neuron/runtime.json`. This discovery record contains the endpoint and API token for the running project runtime.
+- **Bare `neuron` starts the runtime.** Running `neuron` with no arguments starts the foreground project runtime (spawning `nore --project --project-root <root>`), which binds to a loopback TCP port and writes `.neuron/runtime.json` for discovery.
+- **Synchronous execution.** `neuron run` is **synchronous**—it sends one `POST /v1/run` request to the discovered runtime and prints the Assembly result to stdout. It does not stream events or create instances.
+
+## Global flags
+
+These flags are persistent and available to all commands:
+
+| Flag | Description |
+| --- | --- |
+| `--config` | Path to a project config file (defaults to `neuron.config.json`, then `neuron.config.yaml`/`neuron.config.yml`). |
+| `--log-level` | Set the assembly logging level (default: `info`). |
+| `-v`, `--verbose` | Enable verbose output (shows N.O.R.E. daemon logs). |
+| `--remote` | Remote N.O.R.E. endpoint (e.g., `https://api.nore.example.com`). |
+| `--nore-path` | Path to the `nore` daemon binary. |
+| `--force` | Force replacement (clear existing state before the command acts). |
+| `-h`, `--help` | Show help for a command. |
+| `--version` | Show version information. |
+
+## Commands
+
+| Command | Description |
+| --- | --- |
+| [`neuron build`](/cli/build) | Build, compile, and register an assembly with N.O.R.E. |
+| [`neuron run`](/cli/run) | Execute a registered assembly synchronously and print the result. |
+| [`neuron init`](/cli/init) | Scaffold a new Neuron project. |
+| [`neuron capability runtime`](/cli/capability-runtime) | List, inspect, and manage capability runtimes (`list`, `inspect`, plus `add`/`remove`). |
+| [`neuron`](/cli/project-runtime) | Start the foreground project runtime (bare command). |
+| [`neuron version`](/cli/other-commands#version) | Print the Neuron CLI version. |
+| [`neuron new capability-runtime`](/cli/other-commands#new-capability-runtime) | Scaffold a new capability runtime. |
+| [`neuron daemon stop`](/cli/other-commands#daemon) | Stop the legacy background daemon. |
+| [`neuron completion`](/cli/other-commands#completion) | Generate shell completion scripts. |
+
+<Note>
+`neuron register` is a deprecated alias of `neuron build`. It is hidden but still works for backward compatibility.
+</Note>
+
+## Next steps
+
+<CardGroup cols={2}>
+  <Card title="neuron build" icon="hammer" href="/cli/build">
+    Build and register assemblies.
+  </Card>
+  <Card title="neuron run" icon="play" href="/cli/run">
+    Execute assemblies synchronously.
+  </Card>
+</CardGroup>

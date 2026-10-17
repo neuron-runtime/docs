@@ -1,0 +1,408 @@
+---
+title: "Instances"
+description: "Create and manage assembly instances and their executions."
+---
+
+## What is an instance
+
+An instance is a living, running realization of an assembly. Registering an assembly is a metadata operation; creating an instance instantiates the assembly's capabilities and makes it ready to execute. Instances persist across multiple executions and can be stopped and removed.
+
+<Tip>
+Instances are created lazily on the first execution request for an assembly's key. You rarely need to create one explicitly. Use `POST /v1/instances` when you need to pre-create or inspect an instance without running anything.
+</Tip>
+
+## Listing instances
+
+`GET /v1/instances` returns all instances known to the runtime.
+
+<ParamField query="all" type="boolean">
+  Include stopped instances. Default: `false` (running only).
+</ParamField>
+
+<ParamField query="status" type="string>
+  Filter by status (e.g., `running`, `stopped`).
+</ParamField>
+
+```bash
+curl --unix-socket ~/.neuron/nore.sock \
+  -H "Authorization: Bearer $TOKEN" \
+  http://localhost/v1/instances
+```
+
+```json
+{
+  "message": "instances",
+  "status": 200,
+  "data": [
+    {
+      "id": "inst_01J...",
+      "status": "running",
+      "assembly_id": "my-assembly",
+      "blueprint_metadata": {},
+      "version": "1.0.0",
+      "hash": "a1b2c3...",
+      "env": "development"
+    }
+  ]
+}
+```
+
+<ResponseField name="data" type="array">
+  Instance summaries.
+</ResponseField>
+
+<ResponseField name="data.id" type="string">
+  Instance ID (prefixed `inst_`).
+</ResponseField>
+
+<ResponseField name="data.status" type="string">
+  Current status: `running`, `stopped`, or `error`.
+</ResponseField>
+
+<ResponseField name="data.blueprint_metadata" type="object">
+  Metadata from the compiled blueprint.
+</ResponseField>
+
+## Creating an instance
+
+`POST /v1/instances` creates a new instance from an assembly key or an inline assembly document.
+
+<ParamField body="key" type="object" required>
+  The assembly identity. `assembly_id` is required. `version` defaults to `latest`, `env` defaults to `development`, `hash` is resolved by the server when omitted.
+</ParamField>
+
+<ParamField body="assemblies" type="object">
+  Inline assembly document. When provided, the server registers it first (idempotent), then creates the instance. When omitted, the assembly must already be registered.
+</ParamField>
+
+```bash
+curl --unix-socket ~/.neuron/nore.sock \
+  -X POST \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"key": {"assembly_id": "my-assembly", "version": "1.0.0"}}' \
+  http://localhost/v1/instances
+```
+
+```json
+{
+  "message": "instance ready",
+  "status": 200,
+  "data": {
+    "id": "inst_01J...",
+    "status": "running",
+    "assembly_id": "my-assembly",
+    "version": "1.0.0",
+    "hash": "a1b2c3...",
+    "env": "development"
+  }
+}
+```
+
+<ResponseField name="data.id" type="string">
+  The new instance ID.
+</ResponseField>
+
+<ResponseField name="data.status" type="string">
+  Initial status (`running`).
+</ResponseField>
+
+## Getting one instance
+
+`GET /v1/instances/{id}` returns a single instance by ID.
+
+<ParamField path="id" type="string" required>
+  Instance ID (e.g., `inst_01J...`).
+</ParamField>
+
+```bash
+curl --unix-socket ~/.neuron/nore.sock \
+  -H "Authorization: Bearer $TOKEN" \
+  http://localhost/v1/instances/inst_01J...
+```
+
+```json
+{
+  "message": "instance",
+  "status": 200,
+  "data": {
+    "id": "inst_01J...",
+    "status": "running",
+    "assembly_id": "my-assembly",
+    "version": "1.0.0",
+    "hash": "a1b2c3...",
+    "env": "development"
+  }
+}
+```
+
+## Removing an instance
+
+`DELETE /v1/instances/{id}` stops and removes a single instance.
+
+<ParamField path="id" type="string" required>
+  Instance ID.
+</ParamField>
+
+```bash
+curl --unix-socket ~/.neuron/nore.sock \
+  -X DELETE \
+  -H "Authorization: Bearer $TOKEN" \
+  http://localhost/v1/instances/inst_01J...
+```
+
+```json
+{
+  "message": "instance removed",
+  "status": 200
+}
+```
+
+## Clearing all instances
+
+`DELETE /v1/instances` stops and removes every instance. Registered assemblies are not deleted.
+
+```bash
+curl --unix-socket ~/.neuron/nore.sock \
+  -X DELETE \
+  -H "Authorization: Bearer $TOKEN" \
+  http://localhost/v1/instances
+```
+
+```json
+{
+  "message": "instances cleared",
+  "status": 200
+}
+```
+
+## Starting an execution
+
+`POST /v1/instances/{id}/executions` starts a new execution on an instance. The `mode` field controls when the response arrives.
+
+<ParamField path="id" type="string" required>
+  Instance ID.
+</ParamField>
+
+<ParamField body="mode" type="string">
+  `wait` (default) blocks until the execution finishes and returns the result. `detach` returns immediately with `202 Accepted` and the execution ID.
+</ParamField>
+
+<ParamField body="params" type="object">
+  Free-form params merged with query parameters. Query params and body params are merged; body params take precedence on key conflicts.
+</ParamField>
+
+### Wait mode (default)
+
+```bash
+curl --unix-socket ~/.neuron/nore.sock \
+  -X POST \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"params": {"order": {"id": "ord-001"}}}' \
+  http://localhost/v1/instances/inst_01J.../executions
+```
+
+```json
+{
+  "message": "execution completed",
+  "status": 200,
+  "data": {
+    "execution_id": "exec_01J...",
+    "instance_id": "inst_01J...",
+    "status": "completed",
+    "result": {
+      "order": {"id": "ord-001", "status": "authorized"}
+    }
+  }
+}
+```
+
+### Detach mode
+
+```bash
+curl --unix-socket ~/.neuron/nore.sock \
+  -X POST \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"mode": "detach", "params": {}}' \
+  http://localhost/v1/instances/inst_01J.../executions
+```
+
+```json
+{
+  "message": "execution accepted",
+  "status": 202,
+  "data": {
+    "execution_id": "exec_01J...",
+    "instance_id": "inst_01J...",
+    "status": "running",
+    "time": "2026-10-17T12:00:00Z"
+  }
+}
+```
+
+<ResponseField name="data.execution_id" type="string">
+  The new execution ID.
+</ResponseField>
+
+<ResponseField name="data.instance_id" type="string">
+  The instance that owns the execution.
+</ResponseField>
+
+<ResponseField name="data.status" type="string">
+  Current status of the execution.
+</ResponseField>
+
+<ResponseField name="data.time" type="string">
+  UTC timestamp when the execution was accepted (detach mode).
+</ResponseField>
+
+After detaching, track progress via the event stream or the execution state endpoint.
+
+<Info>
+Query parameters are merged into `params` automatically. A request like `POST /v1/instances/inst_01J.../executions?timeout=30s` passes `{"timeout":"30s"}` to the execution even without a JSON body.
+</Info>
+
+## Listing executions
+
+`GET /v1/instances/{id}/executions` returns the execution history of an instance, newest first.
+
+<ParamField path="id" type="string" required>
+  Instance ID.
+</ParamField>
+
+```bash
+curl --unix-socket ~/.neuron/nore.sock \
+  -H "Authorization: Bearer $TOKEN" \
+  http://localhost/v1/instances/inst_01J.../executions
+```
+
+```json
+{
+  "message": "executions",
+  "status": 200,
+  "data": [
+    {
+      "id": "exec_01J...",
+      "correlation_id": "corr_01J...",
+      "status": "completed",
+      "started_at": 1729166400000000000,
+      "completed_at": 1729166401000000000
+    }
+  ]
+}
+```
+
+<ResponseField name="data" type="array">
+  Execution summaries, newest first.
+</ResponseField>
+
+<ResponseField name="data.id" type="string">
+  Execution ID.
+</ResponseField>
+
+<ResponseField name="data.correlation_id" type="string">
+  Correlation ID linking this execution to its caller or upstream context.
+</ResponseField>
+
+<ResponseField name="data.status" type="string">
+  Execution status: `running`, `completed`, `failed`, or `cancelled`.
+</ResponseField>
+
+<ResponseField name="data.started_at" type="integer">
+  Unix nanosecond timestamp when the execution started. Omitted when not yet started.
+</ResponseField>
+
+<ResponseField name="data.completed_at" type="integer">
+  Unix nanosecond timestamp when the execution reached a terminal state. Omitted when still running.
+</ResponseField>
+
+<ResponseField name="data.error" type="string">
+  Error message when the execution failed.
+</ResponseField>
+
+<ResponseField name="data.parent_execution_id" type="string">
+  Set when this execution took over detached work from another execution in the same instance.
+</ResponseField>
+
+## Getting execution state
+
+`GET /v1/instances/{id}/executions/{execID}` returns the current state of a single execution.
+
+<ParamField path="id" type="string" required>
+  Instance ID.
+</ParamField>
+
+<ParamField path="execID" type="string" required>
+  Execution ID.
+</ParamField>
+
+```bash
+curl --unix-socket ~/.neuron/nore.sock \
+  -H "Authorization: Bearer $TOKEN" \
+  http://localhost/v1/instances/inst_01J.../executions/exec_01J...
+```
+
+```json
+{
+  "message": "execution",
+  "status": 200,
+  "data": {
+    "id": "exec_01J...",
+    "correlation_id": "corr_01J...",
+    "status": "running",
+    "started_at": 1729166400000000000
+  }
+}
+```
+
+## Cancelling an execution
+
+`POST /v1/instances/{id}/executions/{execID}/cancel` stops a running execution at the caller's request.
+
+<ParamField path="id" type="string" required>
+  Instance ID.
+</ParamField>
+
+<ParamField path="execID" type="string" required>
+  Execution ID.
+</ParamField>
+
+<ParamField body="reason" type="string">
+  Optional cancellation reason recorded on the execution. When omitted, the server substitutes its own wording.
+</ParamField>
+
+```bash
+curl --unix-socket ~/.neuron/nore.sock \
+  -X POST \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"reason": "user requested stop"}' \
+  http://localhost/v1/instances/inst_01J.../executions/exec_01J.../cancel
+```
+
+```json
+{
+  "message": "execution cancelled",
+  "status": 200,
+  "data": {
+    "id": "exec_01J...",
+    "status": "cancelled",
+    "correlation_id": "corr_01J...",
+    "completed_at": 1729166402000000000
+  }
+}
+```
+
+The status codes distinguish three outcomes:
+
+- `200` — the execution was running and is now cancelled.
+- `404` — the instance or execution does not exist.
+- `409` — the execution has already finished and cannot be cancelled.
+
+## Next steps
+
+- [Events and streaming](/api/events) — stream execution events live or fetch history
+- [Assemblies](/api/assemblies) — register and run assemblies directly
+- [API Overview](/api/overview) — transport, authentication, and conventions

@@ -1,0 +1,278 @@
+---
+title: "Events and streaming"
+description: "Stream execution events over SSE and WebSocket."
+---
+
+## Event types
+
+Executions emit lifecycle events as they progress. Events are persisted and can be fetched after the fact or streamed live.
+
+| Type | Description |
+| --- | --- |
+| `execution.started` | The execution has begun. |
+| `execution.completed` | The execution reached a successful terminal state. |
+| `execution.failed` | The execution reached a failed terminal state. |
+| `execution.cancelled` | The execution was cancelled before completing. |
+| `capability.ready` | A capability is about to start. |
+| `capability.started` | A capability has started. |
+| `capability.completed` | A capability finished successfully. |
+| `capability.failed` | A capability failed. |
+| `capability.log` | A log line from a capability. |
+| `capability.detached` | A capability's work was handed off to a separate execution. |
+| `capability.retry` | A capability is being retried. |
+| `capability.cancelled` | A capability stopped because the execution was cancelled or a sibling failed. |
+
+Terminal events (`execution.completed`, `execution.failed`, `execution.cancelled`) are the last event an execution produces. Consumers that only need the outcome can stop reading once one arrives.
+
+## Fetching past events
+
+`GET /v1/instances/{id}/executions/{execID}/events` returns the persisted event history of an execution as a JSON array.
+
+<ParamField path="id" type="string" required>
+  Instance ID.
+</ParamField>
+
+<ParamField path="execID" type="string" required>
+  Execution ID.
+</ParamField>
+
+```bash
+curl --unix-socket ~/.neuron/nore.sock \
+  -H "Authorization: Bearer $TOKEN" \
+  http://localhost/v1/instances/inst_01J.../executions/exec_01J.../events
+```
+
+```json
+{
+  "message": "events",
+  "status": 200,
+  "data": [
+    {
+      "id": "evt_01J...",
+      "type": "execution.started",
+      "capability_id": "cap_01J...",
+      "payload": {}
+    },
+    {
+      "id": "evt_01J...",
+      "type": "capability.completed",
+      "capability_id": "cap_01J...",
+      "payload": {"result": "ok"}
+    },
+    {
+      "id": "evt_01J...",
+      "type": "execution.completed",
+      "capability_id": "cap_01J...",
+      "payload": {}
+    }
+  ]
+}
+```
+
+<ResponseField name="data" type="array">
+  Persisted events in order.
+</ResponseField>
+
+<ResponseField name="data.id" type="string">
+  Event ID.
+</ResponseField>
+
+<ResponseField name="data.type" type="string">
+  Event type (see table above).
+</ResponseField>
+
+<ResponseField name="data.capability_id" type="string">
+  ID of the capability that produced the event.
+</ResponseField>
+
+<ResponseField name="data.payload" type="any">
+  Event-specific payload.
+</ResponseField>
+
+## Streaming live events (SSE)
+
+`GET /v1/instances/{id}/executions/{execID}/events/stream` opens a Server-Sent Events stream. It replays persisted history (optionally resumed from a specific event) and then delivers live events as they occur.
+
+<ParamField path="id" type="string" required>
+  Instance ID.
+</ParamField>
+
+<ParamField path="execID" type="string" required>
+  Execution ID.
+</ParamField>
+
+<ParamField query="after" type="string">
+  Event ID to resume from. Only events after this ID are replayed. Useful for reconnecting after a dropped connection.
+</ParamField>
+
+```bash
+curl --unix-socket ~/.neuron/nore.sock \
+  -N \
+  -H "Authorization: Bearer $TOKEN" \
+  http://localhost/v1/instances/inst_01J.../executions/exec_01J.../events/stream
+```
+
+The response uses `Content-Type: text/event-stream`. Each event is a single `data:` line containing a JSON object:
+
+```
+data: {"id":"evt_01J...","type":"execution.started","correlation_id":"corr_01J...","capability_id":"cap_01J...","occurred_at":1729166400000000000,"payload":{}}
+
+data: {"id":"evt_01J...","type":"execution.completed","correlation_id":"corr_01J...","capability_id":"cap_01J...","occurred_at":1729166401000000000,"payload":{}}
+
+```
+
+<ResponseField name="id" type="string">
+  Event ID.
+</ResponseField>
+
+<ResponseField name="type" type="string">
+  Event type.
+</ResponseField>
+
+<ResponseField name="correlation_id" type="string">
+  Correlation ID linking the event to its execution context.
+</ResponseField>
+
+<ResponseField name="capability_id" type="string">
+  ID of the capability that produced the event.
+</ResponseField>
+
+<ResponseField name="occurred_at" type="integer">
+  Unix nanosecond timestamp.
+</ResponseField>
+
+<ResponseField name="payload" type="any">
+  Event-specific payload.
+</ResponseField>
+
+### Reconnect behavior
+
+The stream stays open until the execution reaches a terminal state or the client disconnects. If the connection drops, reconnect with `?after=<last_event_id>` to resume from where you left off without missing events.
+
+```bash
+curl --unix-socket ~/.neuron/nore.sock \
+  -N \
+  -H "Authorization: Bearer $TOKEN" \
+  "http://localhost/v1/instances/inst_01J.../executions/exec_01J.../events/stream?after=evt_01J..."
+```
+
+<Warning>
+SSE streams are not buffered by intermediaries. If a proxy sits between the client and the runtime, set `Cache-Control: no-cache` and `Connection: keep-alive` on the response, and ensure the proxy does not buffer the stream.
+</Warning>
+
+## WebSocket
+
+`WS /v1/ws` upgrades the connection to a WebSocket session using the `neuron.v1` subprotocol. The WebSocket API delivers the same event stream as SSE but over a bidirectional connection.
+
+### Connecting
+
+```bash
+websocat -H "Authorization: Bearer $TOKEN" \
+  ws://127.0.0.1:6000/v1/ws
+```
+
+Or with curl (for testing):
+
+```bash
+curl --unix-socket ~/.neuron/nore.sock \
+  -N \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Connection: Upgrade" \
+  -H "Upgrade: websocket" \
+  -H "Sec-WebSocket-Version: 13" \
+  -H "Sec-WebSocket-Key: dGhlIHNhbXBsZSBub25jZQ==" \
+  http://localhost/v1/ws
+```
+
+### Subscribing to an execution room
+
+After connecting, send a `subscribe` message to start receiving events for an execution. The room address is `exec:<instanceID>:<executionID>`.
+
+```json
+{
+  "type": "subscribe",
+  "requestId": "req-1",
+  "room": "exec:inst_01J...:exec_01J..."
+}
+```
+
+The server confirms with a `subscribed` message:
+
+```json
+{
+  "type": "subscribed",
+  "requestId": "req-1",
+  "room": "exec:inst_01J...:exec_01J..."
+}
+```
+
+Events arrive as `event` messages:
+
+```json
+{
+  "type": "event",
+  "room": "exec:inst_01J...:exec_01J...",
+  "event": "execution.started",
+  "data": {"id":"evt_01J...","type":"execution.started","correlation_id":"corr_01J...","capability_id":"cap_01J...","occurred_at":1729166400000000000,"payload":{}}
+}
+```
+
+Unsubscribe to stop receiving events for a room:
+
+```json
+{
+  "type": "unsubscribe",
+  "requestId": "req-2",
+  "room": "exec:inst_01J...:exec_01J..."
+}
+```
+
+### WebSocket message types
+
+| Type | Direction | Description |
+| --- | --- | --- |
+| `subscribe` | Client to server | Subscribe to a room. |
+| `subscribed` | Server to client | Subscription confirmed. |
+| `unsubscribe` | Client to server | Unsubscribe from a room. |
+| `unsubscribed` | Server to client | Unsubscription confirmed. |
+| `event` | Server to client | An event from a subscribed room. |
+| `error` | Server to client | An error occurred processing a message. |
+
+<ParamField body="type" type="string" required>
+  Message type: `subscribe` or `unsubscribe`.
+</ParamField>
+
+<ParamField body="requestId" type="string" required">
+  Client-generated request ID, echoed back in the response.
+</ParamField>
+
+<ParamField body="room" type="string" required>
+  Room address. For execution events: `exec:<instanceID>:<executionID>`.
+</ParamField>
+
+### WebSocket error handling
+
+If the server cannot process a message, it sends an `error` message:
+
+```json
+{
+  "type": "error",
+  "requestId": "req-1",
+  "error": {
+    "code": "internal_error",
+    "message": "room is required"
+  }
+}
+```
+
+If a client cannot keep up with the event stream, the server closes the connection with a policy-violation status. Reconnect and resubscribe to continue.
+
+<Info>
+The WebSocket endpoint requires the same `Authorization: Bearer <token>` header as every other route. The upgrade request is authenticated before the connection is established.
+</Info>
+
+## Next steps
+
+- [Instances](/api/instances) — start and cancel executions
+- [Assemblies](/api/assemblies) — register and run assemblies
+- [API Overview](/api/overview) — transport, authentication, and conventions

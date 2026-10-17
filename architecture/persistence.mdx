@@ -1,0 +1,116 @@
+---
+title: "Persistence"
+description: "Where Neuron stores build records, capability runtimes, and execution state."
+---
+
+Neuron persists build records, assembly manifests, capability runtimes, and execution state. The storage layer is SQLite by default, with content-addressed files for capability runtime binaries.
+
+## Build records
+
+Each build produces a record stored at:
+
+```text
+.neuron/builds/<fingerprint>/build.json
+```
+
+The fingerprint is a hash of the build inputs — source files, dependencies, and configuration. The build record contains:
+
+- The fingerprint and timestamp.
+- The assemblies produced by the build.
+- The capability runtimes resolved during the build.
+
+A pointer to the current build is stored at:
+
+```text
+.neuron/current.json
+```
+
+This file references the fingerprint of the most recent successful build. `neuron run` reads this file to select the default assembly.
+
+## Assembly manifests
+
+After a build, the canonical manifest for each assembly is stored at:
+
+```text
+.neuron/assemblies/<name>/manifest.json
+```
+
+This is the validated, canonical manifest — not the source file. The runtime reads this manifest when executing the assembly.
+
+## Content-addressed capability runtime store
+
+Capability runtimes are stored by content address at:
+
+```text
+~/.neuron/capabilityRuntimes/<type>/<version>/<digest>/
+```
+
+The path is derived from the capability runtime's type, version, and digest. This means:
+
+- The same capability runtime (same digest) is stored once.
+- Different versions or types do not collide.
+- The digest acts as an integrity check — a modified binary produces a different digest and a different path.
+
+<Note>
+The content-addressed store is global to the user, not per-project. A capability runtime downloaded or built once is available to all projects.
+</Note>
+
+## SQLite storage
+
+N.O.R.E. uses SQLite as its default storage engine. SQLite stores:
+
+- Execution state and history.
+- Instance metadata.
+- Event stream data.
+- Analytics data.
+
+SQLite is embedded — no separate database server is required. The database file is created at first startup.
+
+## Atomic writes
+
+All persistent writes are atomic. Neuron writes to a temporary file first, then renames it into place. This prevents corruption from partial writes or crashes during write.
+
+- Build records are written atomically.
+- Assembly manifests are written atomically.
+- SQLite transactions ensure consistency.
+
+## Digest mismatch conflicts
+
+If a capability runtime's digest does not match the expected value, N.O.R.E. refuses to execute it. This is a security measure — a digest mismatch means the binary has been modified or corrupted.
+
+When a digest mismatch occurs:
+
+1. The capability runtime is not executed.
+2. The invocation fails with a digest mismatch error.
+3. The mismatch is logged for investigation.
+
+To resolve a mismatch, rebuild or re-download the capability runtime so its digest matches the expected value.
+
+## Instance restore on restart
+
+N.O.R.E. can restore execution state after a restart. The instance manager (`instance.Manager`) persists enough state to resume in-flight executions:
+
+- Execution state is snapshotted periodically.
+- On restart, the instance manager reads the snapshots and reconstructs the state machine.
+- Executions that were in progress are resumed or marked as failed, depending on how far they progressed.
+
+<Warning>
+Restore-on-restart is best-effort. Executions that were mid-invocation when the process stopped may be marked as failed if the capability runtime cannot confirm the outcome.
+</Warning>
+
+## Next steps
+
+<CardGroup cols={2}>
+  <Card title="Security" icon="shield" href="/architecture/security">
+    Digest verification and isolation.
+  </Card>
+  <Card title="Execution Model" icon="workflow" href="/architecture/execution-model">
+    How execution state is tracked and snapshotted.
+  </Card>
+  <Card title="Providers" icon="plug" href="/architecture/providers">
+    How capability runtimes are hosted.
+  </Card>
+  <Card title="Architecture Overview" icon="layers" href="/architecture/overview">
+    The canonical pipeline and module structure.
+  </Card>
+</CardGroup>

@@ -1,0 +1,108 @@
+---
+title: "neuron capability runtime"
+description: "List and inspect installed capability runtimes, and manage requirements."
+---
+
+Capability runtimes are the machinery that execute capabilities (process-based, WASM, or built-in). The CLI provides commands to list, inspect, add, and remove capability runtime requirements for your project.
+
+<Note>
+Use the exact term **capability runtime** (with a space). The CLI subcommand is `capability runtime`.
+</Note>
+
+## List installed capability runtimes
+
+```bash
+neuron capability runtime list
+```
+
+Filter by type:
+
+```bash
+neuron capability runtime list --type example:echo
+```
+
+## Inspect a specific capability runtime
+
+Inspect by name and version:
+
+```bash
+neuron capability runtime inspect example:echo@1.0.0
+```
+
+If you omit the version, it shows the newest installed version for that type:
+
+```bash
+neuron capability runtime inspect example:echo
+```
+
+## Add a capability runtime requirement
+
+Add resolves, installs, and pins a capability runtime into the project's `.neuron/capabilityRuntimes.json`:
+
+```bash
+neuron add example:echo@^1.0.0
+```
+
+Or without a version constraint (installs the best matching version):
+
+```bash
+neuron add example:echo
+```
+
+Use `--force` to re-fetch even if already installed (global flag):
+
+```bash
+neuron add example:echo@^1.0.0 --force
+```
+
+## Remove a capability runtime requirement
+
+Remove an installed capability runtime. You **must** specify an explicit version:
+
+```bash
+neuron remove example:echo@1.0.0
+```
+
+<Warning>
+`neuron remove` requires an explicit version (e.g., `name@1.2.0`). Omitting the version is not allowed.
+</Warning>
+
+## Example outputs
+
+List:
+
+```text
+example:echo	1.0.0	github	sha256:abc123...
+example:math	1.2.3	github	sha256:def456...
+```
+
+Inspect:
+
+```text
+Name:         example:echo
+Version:      1.0.0
+Registry:     github
+Digest:       sha256:abc123...
+Runtime:      process
+Protocol:     json
+Entrypoint:   bin/echo
+Root:         /home/user/.neuron/capabilityRuntimes/example/echo/1.0.0
+Platform:     linux-amd64
+Capabilities:
+  echo
+```
+
+## Storage
+
+Installed capability runtimes are stored in a content-addressed store under `~/.neuron/capabilityRuntimes/`. Pins recorded in `.neuron/capabilityRuntimes.json` track the exact version chosen for the project.
+
+## Related guides
+
+<CardGroup cols={2}>
+  <Card title="Capability Runtimes Guide" icon="cube" href="/guides/capability-runtimes">
+    Learn about registries, resolution, and execution.
+  </Card>
+  <Card title="Wire Protocol" icon="plug" href="/guides/wire-protocol">
+    Understand the runtime protocol.
+  </Card>
+</CardGroup>
