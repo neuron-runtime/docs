@@ -16,3 +16,22 @@ a[class*="rounded-"],
 div[class*="rounded-2xl"] {
   border-radius: 0.5rem;
 }
+
+/* Show the "Neuron" wordmark next to the icon-only logo in dark mode.
+   Scoped to .dark so it does not duplicate the wordmark already
+   baked into the light-mode logo. */
+.dark :is(a, button):has(> img[src*="/logo/dark"]) {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.dark :is(a, button):has(> img[src*="/logo/dark"])::after {
+  content: "Neuron";
+  font-family: Inter, ui-sans-serif, system-ui, -apple-system, sans-serif;
+  font-size: 1.0625rem;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  color: inherit;
+  white-space: nowrap;
+}
