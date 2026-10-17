@@ -117,10 +117,18 @@
     ]
   },
   "footer": {
+    "socials": {
+      "github": "https://github.com/neuron-runtime/neuron"
+    },
     "links": [
       {
-        "title": "GitHub",
-        "href": "https://github.com/neuron-runtime/neuron"
+        "header": "Documentation",
+        "items": [
+          { "label": "Getting Started", "href": "/getting-started/installation" },
+          { "label": "Architecture", "href": "/architecture/overview" },
+          { "label": "CLI Reference", "href": "/cli/overview" },
+          { "label": "API Reference", "href": "/api/overview" }
+        ]
       }
     ]
   }
