@@ -1,0 +1,76 @@
+---
+title: "Installation"
+description: "Install the Neuron CLI on Linux, macOS, or Windows."
+---
+
+## Supported platforms
+
+| Platform | Architecture |
+| --- | --- |
+| **Linux** | amd64, arm64 |
+| **macOS** | amd64, arm64 |
+| **Windows** | amd64 |
+
+## Option 1: Download a release
+
+Download the archive for your platform from the [Neuron releases](https://github.com/neuron-runtime/neuron/releases).
+
+```bash
+# Replace version, OS, and arch as needed
+curl -L -o neuron-0.1.0-linux-amd64.tar.gz https://github.com/neuron-runtime/neuron/releases/download/v0.1.0/neuron-0.1.0-linux-amd64.tar.gz
+tar -xzf neuron-0.1.0-linux-amd64.tar.gz
+sudo mv neuron nore /usr/local/bin/
+```
+
+Verify the checksum against `SHA256SUMS` from the release page.
+
+## Option 2: Build from source
+
+Requires **Go 1.26.5+**.
+
+```bash
+# Clone the repository
+git clone https://github.com/neuron-runtime/neuron.git
+cd neuron
+
+# Build CLI and runtime
+go build -o neuron ./application/cmd/neuron
+go build -o nore ./nore/cmd/nore
+```
+
+Place the binaries in your `PATH` (e.g., `/usr/local/bin/`).
+
+## Verify installation
+
+```bash
+neuron version
+```
+
+## System requirements
+
+| Tool | Version | Notes |
+| --- | --- | --- |
+| **Go** | 1.26.5+ | Required for building from source |
+| **pnpm** | 10.33.0+ | Required for TypeScript SDK and examples |
+| **Node.js** | 22.x | Required for TypeScript SDK |
+| **.NET SDK** | 10+ | Required for the .NET capability runtime SDK |
+
+## Important: `neuron run` behavior
+
+`neuron run` sends a synchronous `POST /v1/run` request and prints the result to stdout. It does **not** stream events, create instances, or require you to cancel with Ctrl-C. For the project runtime, start it with the bare `neuron` command in your project directory.
+
+<Accordion title="Troubleshooting">
+  <AccordionItem title="The runtime engine cannot be found">
+    Ensure `nore` is in your `PATH`. You can also set `--nore-path` or configure `daemon.norePath`.
+  </AccordionItem>
+  <AccordionItem title="Permission denied when moving to /usr/local/bin">
+    Use `sudo mv` or install to a user-local bin directory in your `PATH` (e.g., `~/.local/bin`).
+  </AccordionItem>
+  <AccordionItem title="Project runtime not found when running `neuron run`">
+    Start the project runtime in your project directory with `neuron` (no arguments). Then run `neuron run` in another terminal or from the same shell.
+  </AccordionItem>
+</Accordion>
+
+<Card title="Next: Quickstart" icon="rocket" href="/getting-started/quickstart">
+  Build and run your first assembly in 15 minutes.
+</Card>
