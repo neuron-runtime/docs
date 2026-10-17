@@ -1,0 +1,94 @@
+---
+title: "Configuration"
+description: "Understand Neuron's configuration layers, keys, and environment variables."
+---
+
+## Overview
+
+Neuron uses a layered configuration model. Values are merged in the following order (later layers override earlier ones):
+
+1. **Defaults** — built-in defaults
+2. **User config** — `~/.config/neuron/config.yaml`
+3. **Project config** — `neuron.config.json` / `.yaml` / `.yml` in the project root
+4. **Environment variables** — any `NEURON_*` variables
+5. **CLI flags** — command-line flags
+
+Unknown keys are rejected. Engine plumbing keys (`daemon.*`, `storage.*`, `capabilityRuntimes.storeDir`) cannot be set from project config.
+
+## Project configuration
+
+`neuron.config.json` (or `.yaml` / `.yml`):
+
+```json
+{
+  "name": "my-first-system",
+  "version": "1.0.0",
+  "lang": "ts",
+  "assemblies": [
+    {
+      "name": "my-first-system",
+      "entry": "assembly.ts"
+    }
+  ],
+  "runtime": {
+    "execution": {
+      "timeout": "30m"
+    }
+  }
+}
+```
+
+<Note type="info">
+The legacy single-assembly `entry` key is still supported for backward compatibility but new projects should use the `assemblies` array.
+</Note>
+
+## Configuration keys
+
+| Key | Type | Description |
+| --- | --- | --- |
+| `name` | string | Project name (injected into the canonical manifest) |
+| `version` | string | Project version (injected into the canonical manifest) |
+| `lang` | string | Authoring language: `ts` (TypeScript) or `yaml` |
+| `assemblies` | array | Assembly definitions with `name` and `entry` |
+| `runtime.execution.timeout` | string | Default execution timeout (e.g., `30m`, `120s`) |
+| `runtime.execution.workers` | number | Number of concurrent execution workers |
+| `runtime.detachedDrainTimeout` | string | Timeout for draining detached executions |
+| `capabilityRuntimes.registries` | array | Registry configuration for resolving external capability runtimes |
+| `capabilityRuntimes.defaultRegistries` | array | Default registry names to search |
+| `capabilityRuntimes.localRoots` | array | Local filesystem roots for capability runtime discovery |
+| `inspector.enabled` | boolean | Enable the inspector |
+| `inspector.address` | string | Inspector bind address |
+| `dev.maxWorkers` | number | Maximum workers in dev mode |
+
+## Environment variables
+
+| Variable | Description |
+| --- | --- |
+| `NEURON_SOCKET` | Override the default Unix socket path |
+| `NEURON_DATA_DIR` | Override the data directory |
+| `NEURON_API_TOKEN` | API token for remote connections |
+| `NEURON_API_TOKEN_FILE` | Path to a file containing the API token |
+| `NEURON_CAPABILITY_RUNTIME_STORE` | Override the capability runtime store directory |
+| `NEURON_RUNTIME_HOST` | Override the runtime bind host |
+
+Any `NEURON_*` variable that maps to a known config key will override that key.
+
+## Runtime configuration
+
+Capability runtime configuration (`runtimeConfig`) belongs to the capability's runtime declaration, not to the capability input. It is resolved once per execution plan — defaults are applied at plan time and never mutate the registered assembly or its hash.
+
+```yaml
+capabilities:
+  - name: order.validate
+    spec:
+      capability runtime:
+        name: neuron:core:set
+        runtimeConfig:
+          concurrency: 1
+```
+
+## Next steps
+
+- [TypeScript SDK](/guides/typescript-sdk)
+- [YAML Authoring](/guides/yaml-authoring)
+- [CLI Overview](/cli/overview)
