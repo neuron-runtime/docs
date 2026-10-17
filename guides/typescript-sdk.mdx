@@ -1,0 +1,96 @@
+---
+title: "TypeScript SDK"
+description: "Author Neuron assemblies and capabilities in TypeScript with the @neuron/sdk."
+---
+
+## Overview
+
+The `@neuron/sdk` is a typed, autocompleted assembly-definition language for TypeScript. It provides compile-time guarantees for assembly definitions.
+
+```bash
+npm install @neuron/sdk
+```
+
+## Define a capability
+
+A capability exposes one executable capability with a typed parameter and result schema.
+
+```ts
+import { Capability, Assembly } from "@neuron/sdk";
+
+type Address = { street: string; city: string; zip: string };
+type OrderItem = { sku: string; name: string; qty: number; priceCents: number };
+type Order = {
+  id: string;
+  customerId: string;
+  customerEmail: string;
+  currency: string;
+  totalCents: number;
+  items: OrderItem[];
+  shippingAddress: Address;
+};
+
+const validateOrder = Capability("order.validate")
+  .runtime({ name: "neuron:core:set" })
+  .paramsSchema<{ order: Order }>()
+  .resultSchema<{ order: Order; valid: boolean }>();
+```
+
+## Build an assembly
+
+Assemblies compose capabilities via bindings.
+
+```ts
+const manifest = Assembly()
+  .paramsSchema<{ order: Order }>()
+  .withParams((data) =>
+    validateOrder
+      .withParams({ order: data.order })
+      .bind(
+        authorizePayment.withParams({
+          order: validateOrder.result.order,
+          amountCents: validateOrder.result.order.totalCents,
+          currency: validateOrder.result.order.currency,
+        })
+      )
+      .bind(
+        createShipment.withParams({
+          order: authorizePayment.result.order,
+          trackingId: "ship-001",
+        })
+      )
+  )
+  .toManifest();
+```
+
+## Runtimes
+
+Capability runtimes are referenced by name and version.
+
+```ts
+.runtime({ name: "neuron:core:set" })
+```
+
+## Schemas
+
+Runtime schema builders support typed validation.
+
+```ts
+import { string, number, boolean, list, record } from "@neuron/sdk";
+
+const orderId = string<{ minLength: 1; maxLength: 64 }>();
+const count = number<{ min: 0; max: 100 }>();
+const flag = boolean();
+const items = list<OrderItem>({ minItems: 1 });
+const metadata = record<string, string>();
+```
+
+<Note type="info">
+The TypeScript SDK is published to npm via trusted publishing. During the first public release, consume it from this repository.
+</Note>
+
+## Next steps
+
+- Learn about YAML authoring at [YAML Authoring](/guides/yaml-authoring).
+- Explore the capability runtime model at [Capability Runtimes](/guides/capability-runtimes).
+- Review the architecture at [Architecture Overview](/architecture/overview).
