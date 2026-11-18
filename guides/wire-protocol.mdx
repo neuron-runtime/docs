@@ -1,0 +1,174 @@
+---
+title: "Wire Protocol"
+description: "gRPC and JSON protocols for capability runtime communication."
+---
+
+## Overview
+
+Capability runtimes communicate with N.O.R.E. via the capability runtime protocol. Two transports are supported:
+
+| Protocol | Kind | Description |
+| --- | --- | --- |
+| **gRPC** | `neuron/capability-runtime-v1` | Preferred for process-based capability runtimes |
+| **JSON over stdio** | `neuron/capability-runtime-v1-json` | Simpler for one-shot or script-based runtimes |
+
+## gRPC Service (capability-runtime/v1)
+
+Defined in `shared/protocol/capabilityruntime/v1/capability_runtime.proto`.
+
+### Methods
+
+| Method | Description |
+| --- | --- |
+| **Initialize** | Initialize the capability runtime with schema and configuration |
+| **Execute** | Execute a capability invocation |
+| **Health** | Check runtime health |
+| **Shutdown** | Gracefully shutdown the runtime |
+
+### InitializeRequest
+
+```protobuf
+message InitializeRequest {
+  Assembly assembly = 1;
+  RuntimeConfig runtime_config = 2;
+  map<string, bytes> metadata = 3;
+}
+```
+
+### InitializeResult
+
+```protobuf
+message InitializeResult {
+  string protocol_version = 1;
+  Features features = 2;
+  map<string, string> metadata = 3;
+}
+```
+
+### ExecuteRequest
+
+```protobuf
+message ExecuteRequest {
+  string invocation_id = 1;
+  string capability_name = 2;
+  Value params = 3;
+  ExecutionContext context = 4;
+  map<string, string> headers = 5;
+}
+```
+
+### ExecuteResult
+
+```protobuf
+message ExecuteResult {
+  oneof outcome {
+    Success success = 1;
+    Error error = 2;
+  }
+}
+```
+
+## JSON over stdio protocol
+
+For the JSON protocol, each request/response is newline-delimited JSON. The runtime reads from stdin and writes to stdout.
+
+### Initialize (JSON)
+
+**Request:**
+```json
+{
+  "type": "initialize",
+  "assembly": { ... },
+  "runtimeConfig": { ... }
+}
+```
+
+**Response:**
+```json
+{
+  "type": "initialize.ok",
+  "protocolVersion": "v1",
+  "features": { ... }
+}
+```
+
+### Execute (JSON)
+
+**Request:**
+```json
+{
+  "type": "execute",
+  "invocationId": "...",
+  "capabilityName": "...",
+  "params": { ... }
+}
+```
+
+**Response:**
+```json
+{
+  "type": "execute.ok",
+  "result": { ... }
+}
+```
+
+**Error Response:**
+```json
+{
+  "type": "execute.error",
+  "error": {
+    "code": "CAPABILITY_ERROR",
+    "message": "...",
+    "details": { ... }
+  }
+}
+```
+
+## Go executor SDK
+
+The Go SDK simplifies implementing capability runtimes.
+
+```go
+package main
+
+import (
+	"context"
+	"fmt"
+
+	cap "github.com/neuron-runtime/neuron/packages/executor-sdks/golang"
+)
+
+type handler struct{}
+
+func (h *handler) Initialize(ctx context.Context, req cap.InitializeRequest) (cap.InitializeResult, error) {
+	return cap.InitializeResult{
+		ProtocolVersion: "v1",
+	}, nil
+}
+
+func (h *handler) Execute(ctx context.Context, req cap.ExecuteRequest) (cap.ExecuteResult, error) {
+	return cap.ExecuteResult{
+		Success: &cap.Success{Result: map[string]any{"ok": true}},
+	}, nil
+}
+
+func (h *handler) Health(ctx context.Context, req cap.HealthRequest) (cap.HealthResult, error) {
+	return cap.HealthResult{Healthy: true}, nil
+}
+
+func (h *handler) Shutdown(ctx context.Context, req cap.ShutdownRequest) error {
+	return nil
+}
+
+func main() {
+	if err := cap.Serve(&handler{}); err != nil {
+		panic(err)
+	}
+}
+```
+
+## Next steps
+
+- [Capability Runtimes](/guides/capability-runtimes)
+- [Providers](/architecture/providers)
+- [Architecture Overview](/architecture/overview)

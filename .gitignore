@@ -1,0 +1,10 @@
+# Editor swap/backup files
+*.swp
+*.swo
+*~
+
+# OS files
+.DS_Store
+
+# Agent instructions (managed locally)
+AGENTS.md

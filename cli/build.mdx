@@ -1,0 +1,91 @@
+---
+title: "neuron build"
+description: "Build, compile, and register an assembly with the Neuron runtime."
+---
+
+`neuron build` takes a project from source to registered, runnable assemblies. It builds each declared assembly, resolves and freezes capability runtimes, and registers them with N.O.R.E.
+
+## What the build pipeline does
+
+<Steps>
+  <Step title="Build project sources">
+    For each declared assembly, the CLI builds language-specific sources (TypeScript or YAML) into canonical manifests under `.neuron/assemblies/<name>/manifest.json`.
+  </Step>
+  <Step title="Build local capability runtimes">
+    Any local capability runtimes declared by the project are built and installed into the immutable capability runtime store.
+  </Step>
+  <Step title="Compile and resolve">
+    Each manifest is compiled to a core assembly. Capability runtime requirements are resolved against configured registries and frozen to an exact set.
+  </Step>
+  <Step title="Register with N.O.R.E.">
+    Compiled assemblies are registered with N.O.R.E. via the runtime client.
+  </Step>
+  <Step title="Persist build records">
+    Build outcomes are written to `.neuron/builds/<fingerprint>/build.json`, and `.neuron/current.json` is updated to point to the current build.
+  </Step>
+</Steps>
+
+<Note>
+A project may declare multiple assemblies. Each is built, registered, and tracked independently in the build record.
+</Note>
+
+## Flags
+
+| Flag | Description |
+| --- | --- |
+| `-l`, `--lang` | Project authoring language (`yaml`, `yml`, `typescript`, `ts`). Overrides config if provided. |
+| `-r`, `--root` | Project root (defaults to current directory). |
+| `-a`, `--assembly` | Build only the named assembly (default: all declared assemblies). |
+| `--force` | Force replacement (clear existing state before acting). |
+| `-v`, `--verbose` | Enable verbose output. |
+
+Global flags (`--config`, `--log-level`, `--remote`, `--nore-path`, `--help`) also apply.
+
+## What it writes to disk
+
+| Path | Purpose |
+| --- | --- |
+| `.neuron/assemblies/<name>/manifest.json` | Canonical manifest for each built assembly. |
+| `.neuron/builds/<fingerprint>/build.json` | Immutable build record containing assembly identities, fingerprints, keys, and frozen capability runtimes. |
+| `.neuron/current.json` | Pointer to the current build fingerprint. |
+
+## Usage
+
+```bash
+neuron build
+```
+
+Build a specific assembly:
+
+```bash
+neuron build --assembly my-assembly
+```
+
+Build with explicit language:
+
+```bash
+neuron build --lang typescript
+```
+
+## Example output
+
+```bash
+my-project@1.0.0#abc123:wait (registered)
+```
+
+The line format is: `assemblyId@version#hash:env (status)`.
+
+<Note>
+`neuron register` is a deprecated alias of `neuron build`. It is hidden but still works for backward compatibility.
+</Note>
+
+## Next steps
+
+<CardGroup cols={2}>
+  <Card title="neuron run" icon="play" href="/cli/run">
+    Execute a registered assembly.
+  </Card>
+  <Card title="Project runtime" icon="server" href="/cli/project-runtime">
+    Start the foreground project runtime.
+  </Card>
+</CardGroup>

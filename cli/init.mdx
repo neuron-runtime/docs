@@ -1,0 +1,116 @@
+---
+title: "neuron init"
+description: "Scaffold a new Neuron project."
+---
+
+`neuron init` scaffolds a new Neuron project in the specified directory (or the current directory). It creates a runnable project structure with example files so you can build and run immediately.
+
+## What it creates
+
+Depending on the chosen language, `neuron init` creates:
+
+- **Configuration**: `neuron.config.json` with project metadata, assembly declarations, and runtime defaults.
+- **Assembly**: A starter assembly file (`assembly.ts` for TypeScript, `assembly.yaml` for YAML).
+- **Capabilities**: For YAML projects, a `capabilities/` directory with a starter capability definition.
+- **Package files**: For TypeScript projects, `package.json` and `tsconfig.json`.
+- **Capability runtime root**: `neuron/capabilityRuntimes/.gitkeep` as the canonical project-scoped capability runtime directory.
+
+## Scaffolded config shape
+
+The generated `neuron.config.json` uses the `assemblies` array (not a single assembly object). A typical scaffold looks like:
+
+```json
+{
+  "name": "my-project",
+  "version": "1.0.0",
+  "lang": "typescript",
+  "assemblies": [
+    {
+      "name": "my-project",
+      "entry": "assembly.ts",
+      "default": true
+    }
+  ],
+  "runtime": {
+    "host": "localhost",
+    "port": "auto",
+    "execution": {
+      "mode": "wait",
+      "timeout": "30m"
+    }
+  },
+  "capabilityRuntimes": {
+    "localRoots": ["./neuron/capabilityRuntimes"]
+  },
+  "inspector": {
+    "enabled": true,
+    "address": "127.0.0.1:7433"
+  }
+}
+```
+
+<Note>
+The project configuration (not the authored assembly files) owns the assembly identity. `neuron build` injects the name and version from config during the build.
+</Note>
+
+## Flags
+
+| Flag | Description |
+| --- | --- |
+| `-l`, `--lang` | Project authoring language (`ts`, `typescript`, `yaml`, `yml`). Default: `ts`. |
+
+## Usage
+
+Scaffold in the current directory:
+
+```bash
+neuron init
+```
+
+Scaffold in a new directory:
+
+```bash
+neuron init my-project
+```
+
+Scaffold as YAML:
+
+```bash
+neuron init --lang yaml
+```
+
+Scaffold a specific project name:
+
+```bash
+neuron init my-app --lang typescript
+```
+
+## Next steps
+
+After initialization:
+
+```bash
+cd my-project
+# For TypeScript
+npm install
+# Build and run
+neuron build
+neuron run
+```
+
+For YAML projects, skip `npm install` and go straight to `neuron build && neuron run`.
+
+<Note>
+The scaffold is meant to be runnable out of the box. Install dependencies first if using TypeScript.
+</Note>
+
+## Next steps
+
+<CardGroup cols={2}>
+  <Card title="neuron build" icon="hammer" href="/cli/build">
+    Build the scaffolded project.
+  </Card>
+  <Card title="Quickstart" icon="rocket" href="/getting-started/quickstart">
+    Follow the full quickstart guide.
+  </Card>
+</CardGroup>

@@ -1,0 +1,103 @@
+---
+title: "neuron run"
+description: "Execute a registered assembly synchronously and print the result."
+---
+
+`neuron run` executes a registered assembly using the project runtime. It discovers the local runtime (via `.neuron/runtime.json`) or connects to a remote endpoint, sends one synchronous request, and prints the result to stdout.
+
+## How it works
+
+1. **Discovery.** If `--remote` is not specified, `neuron run` walks up from the current directory to find `.neuron/runtime.json`. This file is written when you start the project runtime with [`neuron`](/cli/project-runtime).
+2. **Selector resolution.** If no argument is provided, it selects the default assembly from the current build (`.neuron/current.json`). If you pass an assembly name, it resolves that assembly from the current build record.
+3. **Synchronous execution.** It sends a single `POST /v1/run?assembly=<selector>` request to the runtime facade and waits for the result. 
+4. **Output.** The assembly result is printed to stdout in the requested format. Errors are printed to stderr.
+
+<Warning>
+`neuron run` is **synchronous**. It sends one request, waits for the result, prints it to stdout, and exits.
+</Warning>
+
+## Flags
+
+| Flag | Description |
+| --- | --- |
+| `--params` | JSON params payload for execution (e.g., `'{"key":"value"}'`). Mutually exclusive with `--params-file`. |
+| `--params-file` | Path to a JSON file containing params. Mutually exclusive with `--params`. |
+| `--port` | Override local runtime port (default: auto-discovered from project). |
+| `--format` | Output format for the assembly result (`json` or `text`). Default: `json`. |
+| `--remote` | Remote N.O.R.E. endpoint. Global flag. |
+
+Other global flags (`--config`, `--log-level`, `--verbose`, `--nore-path`, `--help`) also apply.
+
+## Usage
+
+Run the default assembly:
+
+```bash
+neuron run
+```
+
+Run a specific assembly by name:
+
+```bash
+neuron run my-assembly
+```
+
+Run with parameters:
+
+```bash
+neuron run --params '{"order": {"id": "ord-001"}}'
+```
+
+Run with parameters from a file:
+
+```bash
+neuron run --params-file params.json
+```
+
+Output as text:
+
+```bash
+neuron run --format text
+```
+
+## Example
+
+```bash
+neuron run --params '{"name": "Neuron"}'
+```
+
+Sample output (`json` format):
+
+```json
+{
+  "name": "Neuron",
+  "message": "Hello, Neuron!"
+}
+```
+
+Sample output (`text` format):
+
+```text
+name: Neuron
+message: Hello, Neuron!
+```
+
+## Error behavior
+
+If execution fails, the CLI writes `execution failed: <message>` to stderr and exits with a non-zero status. The result is not written to stdout in that case.
+
+## Prerequisites
+
+- The project must be built first: [`neuron build`](/cli/build).
+- A project runtime must be running: either start [`neuron`](/cli/project-runtime) in the project directory, or use `--remote` to connect to a remote N.O.R.E. endpoint.
+
+## Next steps
+
+<CardGroup cols={2}>
+  <Card title="Project runtime" icon="server" href="/cli/project-runtime">
+    Start the foreground runtime.
+  </Card>
+  <Card title="neuron build" icon="hammer" href="/cli/build">
+    Build assemblies before running.
+  </Card>
+</CardGroup>

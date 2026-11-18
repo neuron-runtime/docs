@@ -1,0 +1,125 @@
+---
+title: "API Overview"
+description: "Transport, authentication, and conventions for the N.O.R.E. HTTP API."
+---
+
+## What the API is
+
+The N.O.R.E. HTTP API is the local control plane for a running N.O.R.E. runtime. It lets you register assemblies, create and manage instances, execute capabilities, and stream execution events. Every route is served by the same runtime process that executes your assemblies, so the API is always local to the machine running the project.
+
+<Note>
+Most users interact with the runtime through the [`neuron` CLI](/cli/overview) rather than raw HTTP. The CLI handles discovery, authentication, and request formatting. Use the HTTP API directly when you need programmatic control or are building tooling on top of N.O.R.E.
+</Note>
+
+## Transport
+
+The API is served over one of two transports, chosen at startup.
+
+**Unix socket (default).** The daemon listens on `~/.neuron/nore.sock` with mode `0600`. This is the default transport for the standalone daemon. The socket path is configurable via `NEURON_SOCKET` or `daemon.socket` in the global config.
+
+**Project runtime TCP.** When you start a project runtime (for example, by running `neuron` in a project directory), the runtime binds to `127.0.0.1` on an OS-assigned port. It writes a discovery record to `.neuron/runtime/<sessionId>.json` in the project root. The record carries the host, port, PID, project root, and API token. The CLI reads this record to discover the endpoint automatically.
+
+<Warning>
+The daemon refuses to listen on TCP without an API token. Loopback is reachable by every local process, so an unauthenticated TCP endpoint would let any local user run arbitrary capability runtimes. Start the daemon with `--token` or point `NEURON_API_TOKEN_FILE` at a file holding one.
+</Warning>
+
+### Connecting over Unix socket
+
+```bash
+curl --unix-socket ~/.neuron/nore.sock \
+  -H "Authorization: Bearer $TOKEN" \
+  http://localhost/v1/assemblies
+```
+
+Use `http://localhost` (or any hostname) as the URL host. curl routes the request through the socket, not DNS.
+
+### Connecting over TCP
+
+```bash
+curl -H "Authorization: Bearer $TOKEN" \
+  http://127.0.0.1:6000/v1/assemblies
+```
+
+Replace `6000` with the port from the discovery record or the daemon's startup output.
+
+## Authentication
+
+Every route except `GET /health` requires a bearer token. Send it in the `Authorization` header:
+
+```bash
+-H "Authorization: Bearer <token>"
+```
+
+The token is compared in constant time, so a rejected token cannot be recovered by measuring the comparison. A missing or incorrect token returns `401 Unauthorized` with a `WWW-Authenticate: Bearer realm="neuron"` header and a plain-text body.
+
+<Tip>
+The daemon generates a token at startup and writes it beside the socket at `~/.neuron/nore.sock.token` (mode `0600`). The CLI reads it automatically. For remote TCP connections, supply the token via `NEURON_API_TOKEN` or `NEURON_API_TOKEN_FILE`.
+</Tip>
+
+## Middleware chain
+
+Requests pass through a fixed middleware chain before reaching the route handler:
+
+1. **Recovery** — catches panics and returns `500 Internal Server Error`.
+2. **TokenAuth** — rejects unauthenticated requests with `401`.
+3. **Logging** — records the method, path, and duration of every accepted request.
+4. **Mux** — routes to the handler.
+
+The order is deliberate: recovery covers panics from inner layers, authentication runs before any logging-heavy or handler code, and logging only records requests that were actually accepted.
+
+## Response envelope
+
+Every JSON response uses a common envelope:
+
+```json
+{
+  "message": "assembly registered",
+  "status": 200,
+  "data": { }
+}
+```
+
+<ResponseField name="message" type="string">
+  Human-readable summary of the outcome.
+</ResponseField>
+
+<ResponseField name="status" type="integer">
+  HTTP status code, echoed in the body.
+</ResponseField>
+
+<ResponseField name="data" type="object | array | null">
+  The response payload. Omitted when there is nothing to return.
+</ResponseField>
+
+Error responses use the same envelope with a non-2xx `status` and a `message` describing the failure.
+
+## Endpoint table
+
+| Method | Path | Description |
+| --- | --- | --- |
+| `GET` | `/health` | Unauthenticated health check |
+| `POST` | `/v1/register` | Register an assembly |
+| `POST` | `/v1/run?assembly=<selector>` | Synchronous execution facade |
+| `GET` | `/v1/instances` | List instances |
+| `POST` | `/v1/instances` | Create an instance |
+| `DELETE` | `/v1/instances` | Clear all instances |
+| `GET` | `/v1/instances/{id}` | Get one instance |
+| `DELETE` | `/v1/instances/{id}` | Remove one instance |
+| `POST` | `/v1/instances/{id}/executions` | Start an execution |
+| `GET` | `/v1/instances/{id}/executions` | List executions |
+| `GET` | `/v1/instances/{id}/executions/{execID}` | Get execution state |
+| `GET` | `/v1/instances/{id}/executions/{execID}/events` | Fetch past events |
+| `GET` | `/v1/instances/{id}/executions/{execID}/events/stream` | Stream live events (SSE) |
+| `POST` | `/v1/instances/{id}/executions/{execID}/cancel` | Cancel a running execution |
+| `GET` | `/v1/assemblies` | List registered assemblies |
+| `GET` | `/v1/assemblies/{name}` | Get one assembly |
+| `POST` | `/v1/assemblies/{name}/run` | Run a named assembly |
+| `POST` | `/v1/assemblies/run` | Run the default assembly |
+| `WS` | `/v1/ws` | WebSocket event stream |
+
+## Next steps
+
+- [Assemblies](/api/assemblies) — register and run assemblies
+- [Instances](/api/instances) — manage instances and executions
+- [Events and streaming](/api/events) — SSE and WebSocket event streams
+- [Health](/api/health) — unauthenticated health check

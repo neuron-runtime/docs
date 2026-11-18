@@ -1,0 +1,263 @@
+---
+title: "Assemblies"
+description: "Register and run assemblies over the HTTP API."
+---
+
+## Registering an assembly
+
+`POST /v1/register` durably registers an assembly definition with the runtime. Registration does not create an instance. Instances are created lazily on the first execution request for the assembly's key.
+
+```bash
+curl --unix-socket ~/.neuron/nore.sock \
+  -X POST \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d @assembly.json \
+  http://localhost/v1/register
+```
+
+The request body carries the assembly document and an optional client-computed key:
+
+```json
+{
+  "assembly": {
+    "name": "my-assembly",
+    "version": "1.0.0",
+    "graph": {}
+  },
+  "key": {
+    "assembly_id": "my-assembly",
+    "version": "1.0.0",
+    "env": "development"
+  },
+  "force": false
+}
+```
+
+<ParamField body="assembly" type="object" required>
+  The assembly document. The runtime compiles it before registration and rejects an invalid assembly with `400`.
+</ParamField>
+
+<ParamField body="key" type="object">
+  Client-computed identity (assembly ID, version, hash, env). When omitted, the server derives the key from the assembly metadata and content hash. When `key.hash` is provided, the server validates it against the assembly content and rejects a mismatch with `400`.
+</ParamField>
+
+<ParamField body="force" type="boolean">
+  When `true`, clears the registered assembly for the resolved name and version (and removes any instances built from it) before registering the new one.
+</ParamField>
+
+The response reports the registration outcome:
+
+```json
+{
+  "message": "assembly registered",
+  "status": 200,
+  "data": {
+    "key": {
+      "assembly_id": "my-assembly",
+      "version": "1.0.0",
+      "hash": "a1b2c3...",
+      "env": "development"
+    },
+    "status": "registered"
+  }
+}
+```
+
+<ResponseField name="data.key" type="object">
+  The resolved durable identity of the assembly.
+</ResponseField>
+
+<ResponseField name="data.status" type="string">
+  One of `registered`, `already_registered`, or `replaced`.
+</ResponseField>
+
+## Listing assemblies
+
+`GET /v1/assemblies` returns every assembly registered with the runtime.
+
+```bash
+curl --unix-socket ~/.neuron/nore.sock \
+  -H "Authorization: Bearer $TOKEN" \
+  http://localhost/v1/assemblies
+```
+
+```json
+{
+  "message": "assemblies",
+  "status": 200,
+  "data": [
+    {
+      "assembly_id": "my-assembly",
+      "version": "1.0.0",
+      "hash": "a1b2c3...",
+      "env": "development",
+      "registered_at": "2026-10-17T12:00:00Z"
+    }
+  ]
+}
+```
+
+<ResponseField name="data" type="array">
+  Registered assemblies, each with identity and registration time.
+</ResponseField>
+
+## Getting one assembly
+
+`GET /v1/assemblies/{name}` returns metadata for a single registered assembly. When the name carries no version, the latest registered version is used.
+
+<ParamField path="name" type="string" required>
+  Assembly name or colon-encoded key (`name:version:hash:env`).
+</ParamField>
+
+```bash
+curl --unix-socket ~/.neuron/nore.sock \
+  -H "Authorization: Bearer $TOKEN" \
+  http://localhost/v1/assemblies/my-assembly
+```
+
+```json
+{
+  "message": "assembly",
+  "status": 200,
+  "data": {
+    "assembly_id": "my-assembly",
+    "version": "1.0.0",
+    "hash": "a1b2c3...",
+    "env": "development",
+    "registered_at": "2026-10-17T12:00:00Z"
+  }
+}
+```
+
+<ResponseField name="data.assembly_id" type="string">
+  Assembly name.
+</ResponseField>
+
+<ResponseField name="data.version" type="string">
+  Registered version.
+</ResponseField>
+
+<ResponseField name="data.hash" type="string">
+  Content hash of the registered assembly.
+</ResponseField>
+
+<ResponseField name="data.env" type="string">
+  Environment the assembly was registered under.
+</ResponseField>
+
+<ResponseField name="data.registered_at" type="string">
+  RFC 3339 UTC timestamp of registration.
+</ResponseField>
+
+## Running an assembly
+
+Three routes execute an assembly synchronously. All three block until the execution reaches a terminal state and return the assembly result or the execution's terminal error. None of them return execution history or events.
+
+<Tip>
+[`neuron run`](/cli/run) maps to `POST /v1/run`. It sends one synchronous request, waits for the result, prints it, and exits. No streaming.
+</Tip>
+
+### Run by selector
+
+`POST /v1/run?assembly=<selector>` is the simple synchronous facade. The selector addresses the assembly by name or colon-encoded key and travels in the query string so the body stays a pure params payload.
+
+<ParamField query="assembly" type="string" required>
+  Assembly name or colon-encoded key (`name:version:hash:env`).
+</ParamField>
+
+<ParamField body="params" type="object">
+  Free-form params passed to the execution's entry capabilities.
+</ParamField>
+
+```bash
+curl --unix-socket ~/.neuron/nore.sock \
+  -X POST \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"params": {"order": {"id": "ord-001"}}}' \
+  "http://localhost/v1/run?assembly=my-assembly"
+```
+
+### Run a named assembly
+
+`POST /v1/assemblies/{name}/run` resolves the named assembly and executes it. Use this when the assembly name is already part of the URL.
+
+<ParamField path="name" type="string" required>
+  Assembly name or colon-encoded key.
+</ParamField>
+
+<ParamField body="params" type="object">
+  Free-form params passed to the execution's entry capabilities.
+</ParamField>
+
+```bash
+curl --unix-socket ~/.neuron/nore.sock \
+  -X POST \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"params": {"order": {"id": "ord-001"}}}' \
+  http://localhost/v1/assemblies/my-assembly/run
+```
+
+### Run the default assembly
+
+`POST /v1/assemblies/run` executes the default registered assembly. When exactly one assembly is registered, it is the default. When several are registered, the request fails with `400` and asks you to specify a name.
+
+```bash
+curl --unix-socket ~/.neuron/nore.sock \
+  -X POST \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"params": {}}' \
+  http://localhost/v1/assemblies/run
+```
+
+### Run response
+
+All three run routes return the same result contract:
+
+```json
+{
+  "message": "execution completed",
+  "status": 200,
+  "data": {
+    "execution_id": "exec_01J...",
+    "instance_id": "inst_01J...",
+    "status": "completed",
+    "result": {
+      "order": {"id": "ord-001", "status": "authorized"}
+    }
+  }
+}
+```
+
+<ResponseField name="data.execution_id" type="string">
+  ID of the execution that ran.
+</ResponseField>
+
+<ResponseField name="data.instance_id" type="string">
+  ID of the instance that ran it.
+</ResponseField>
+
+<ResponseField name="data.status" type="string">
+  Terminal status: `completed` or `failed`.
+</ResponseField>
+
+<ResponseField name="data.error" type="string">
+  Present when the execution ran but failed. Distinct from a transport-level `500`, which means the execution could not be started.
+</ResponseField>
+
+<ResponseField name="data.result" type="object">
+  The assembly result, resolved from the blueprint's result contract.
+</ResponseField>
+
+<Warning>
+A `200` response with `data.error` set means the execution ran and failed. A non-2xx status means the execution could not be started (for example, the selector named no registered assembly, which returns `404`). Handle the two cases differently.
+</Warning>
+
+## Next steps
+
+- [Instances](/api/instances) — create and manage living instances of an assembly
+- [Events and streaming](/api/events) — stream execution events over SSE or WebSocket
+- [API Overview](/api/overview) — transport, authentication, and conventions

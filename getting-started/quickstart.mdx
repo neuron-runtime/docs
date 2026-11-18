@@ -1,0 +1,76 @@
+---
+title: "Quickstart"
+description: "Build and run your first Neuron assembly in 15 minutes."
+---
+
+## Prerequisites
+
+- [Neuron installed](/getting-started/installation)
+- The Neuron repository checked out (for the example)
+- `pnpm` 10.33.0+ and `Node.js` 22.x if using the TypeScript example
+
+## Get started
+
+<Steps>
+  <Step title="Navigate to the TypeScript example">
+    From the Neuron repo root:
+
+    ```bash
+    cd examples/ecommerce_order_ts
+    pnpm install
+    ```
+  </Step>
+  <Step title="Build the SDK">
+    Build the TypeScript SDK dependencies:
+
+    ```bash
+    cd ../.. && pnpm build:sdk && cd examples/ecommerce_order_ts
+    ```
+  </Step>
+  <Step title="Build the assembly">
+    Build the assembly with the Neuron CLI:
+
+    ```bash
+    neuron build
+    ```
+  </Step>
+  <Step title="Start the project runtime">
+    Start the foreground project runtime in the project directory:
+
+    ```bash
+    neuron
+    ```
+
+    <Note>
+    The bare `neuron` command starts N.O.R.E. in the foreground as the project runtime. It binds a loopback TCP port and writes a discovery record. Keep this terminal open.
+    </Note>
+  </Step>
+  <Step title="Run the assembly">
+    In a new terminal (or in the same project context), run the assembly with parameters:
+
+    ```bash
+    neuron run --params '{"order": {"id": "ord-001", "customerId": "cust-001", "customerEmail": "test@example.com", "currency": "USD", "totalCents": 5000, "items": [], "shippingAddress": {"street": "123 Main", "city": "SF", "zip": "94105"}}}'
+    ```
+
+    <Note type="info">
+    `neuron run` is **synchronous**. It sends one `POST /v1/run` request and prints the result to stdout. It does **not** stream events, create instances, or require Ctrl-C.
+    </Note>
+  </Step>
+</Steps>
+
+## Next steps
+
+<CardGroup cols={2}>
+  <Card title="TypeScript SDK" icon="code" href="/guides/typescript-sdk">
+    Author assemblies in TypeScript with a typed SDK.
+  </Card>
+  <Card title="YAML authoring" icon="file-code" href="/guides/yaml-authoring">
+    Define assemblies and capabilities in canonical YAML.
+  </Card>
+  <Card title="Configuration" icon="gear" href="/guides/configuration">
+    Learn about the 5-layer config merge and project settings.
+  </Card>
+  <Card title="CLI Reference" icon="terminal" href="/cli/overview">
+    Explore all CLI commands and options.
+  </Card>
+</CardGroup>

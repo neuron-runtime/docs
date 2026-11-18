@@ -1,0 +1,76 @@
+---
+title: "Project runtime"
+description: "Run the foreground N.O.R.E. project runtime with the bare neuron command."
+---
+
+Running `neuron` with no arguments starts the foreground project runtime. This is N.O.R.E. (Neuron Operational Runtime Engine) bound to your project, serving assemblies over loopback TCP.
+
+## What bare `neuron` does
+
+<Steps>
+  <Step title="Spawns the runtime">
+    The CLI launches `nore --project --project-root <root>` as a child process in the foreground.
+  </Step>
+  <Step title="Binds loopback TCP">
+    The runtime binds to `127.0.0.1` on an automatically selected free port (or the port from config).
+  </Step>
+  <Step title="Writes the discovery record">
+    Once listening, it writes `.neuron/runtime.json` containing the endpoint and API token that the CLI uses for discovery.
+  </Step>
+  <Step title="Prints the URL">
+    The CLI prints the runtime URL to stdout so you can open it or share it.
+  </Step>
+  <Step title="Serves until Ctrl-C">
+    The process stays in the foreground and serves requests until you stop it with Ctrl-C.
+  </Step>
+</Steps>
+
+## Relationship to `neuron run`
+
+The project runtime and [`neuron run`](/cli/run) work together:
+
+- **Start the runtime** with the bare `neuron` command (this page).
+- **Run an assembly** with [`neuron run`](/cli/run), which discovers the runtime via `.neuron/runtime.json` and sends a synchronous `POST /v1/run` request.
+
+<Note>
+You only need one running project runtime per project. Multiple `neuron run` calls reuse the same runtime and discovery record.
+</Note>
+
+## Flags
+
+| Flag | Description |
+| --- | --- |
+| `--config` | Path to a project config file. |
+| `--log-level` | Set the assembly logging level (default: `info`). |
+| `-v`, `--verbose` | Enable verbose output (shows N.O.R.E. daemon logs). |
+| `--remote` | Remote N.O.R.E. endpoint. |
+| `--nore-path` | Path to the `nore` daemon binary. |
+
+## Usage
+
+Start the project runtime in the current directory:
+
+```bash
+neuron
+```
+
+The CLI prints the runtime URL and serves until you press Ctrl-C.
+
+## Legacy daemon
+
+Older versions of Neuron used a background daemon. If you have a legacy daemon running, stop it with [`neuron daemon stop`](/cli/other-commands#daemon) before starting the foreground runtime.
+
+<Warning>
+Do not run the foreground runtime and a legacy background daemon at the same time. Stop the legacy daemon first.
+</Warning>
+
+## Next steps
+
+<CardGroup cols={2}>
+  <Card title="neuron run" icon="play" href="/cli/run">
+    Execute a registered assembly.
+  </Card>
+  <Card title="Other commands" icon="terminal" href="/cli/other-commands">
+    Reference for version, new, daemon, and completion.
+  </Card>
+</CardGroup>

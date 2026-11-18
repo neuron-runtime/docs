@@ -1,0 +1,108 @@
+---
+title: "Capability Runtimes"
+description: "Understand the module/capability runtime model, registries, resolution, and execution."
+---
+
+## Overview
+
+Capability runtimes are the machinery that execute capabilities. They can be:
+
+- **Built-in**: In-process capability runtimes (`neuron:core:set`, `ai`, `log`, `http`, `delay`, `command`).
+- **External**: Process-based or WASM-based capability runtimes that run out-of-process.
+
+## Module lifecycle
+
+<Steps>
+  <Step title="Requirement">
+    A project requires a capability runtime (e.g., `example:echo@^1.0.0`).
+  </Step>
+  <Step title="Registry">
+    Registries (GitHub, local) provide manifests.
+  </Step>
+  <Step title="Resolution">
+    The resolver finds the best matching version by semver.
+  </Step>
+  <Step title="Installation">
+    The installer downloads and verifies the package archive.
+  </Step>
+  <Step title="Store">
+    Verified artifacts are stored content-addressed.
+  </Step>
+  <Step title="Freezing">
+    Build freezes resolved capability runtimes into the registered assembly.
+  </Step>
+  <Step title="Execution">
+    N.O.R.E. executes via the provider for the runtime type.
+  </Step>
+</Steps>
+
+## Package archives
+
+Packages use the naming convention:
+
+```
+<name>-<version>-capability-runtime.neuron.tar.gz
+```
+
+Contains `runtime.json`, binaries, and any required assets.
+
+## runtime.json
+
+```json
+{
+  "name": "example:echo",
+  "version": "1.0.0",
+  "protocol": {
+    "kind": "capability-runtime/v1",
+    "transport": "process",
+    "binary": {
+      "path": "bin/echo",
+      "args": []
+    }
+  },
+  "schemas": {},
+  "metadata": {}
+}
+```
+
+## Capability runtime types
+
+| Type | Transport | Description |
+| --- | --- | --- |
+| **process** | gRPC or JSON over stdio | Native processes (Go, Node, Python, etc.) |
+| **wasm** | WASI (wazero) | WebAssembly modules |
+
+## Project configuration for registries
+
+```yaml
+capabilityRuntimes:
+  registries:
+    - type: github
+      name: public
+      owner: neuron-runtime
+      repo: capability-runtimes-catalog
+      reference: main
+    - type: local
+      name: local
+      path: ./catalog
+  defaultRegistries: [github, local]
+```
+
+## Commands
+
+```bash
+neuron capability runtime list
+neuron capability runtime inspect example:echo@1.0.0
+neuron add example:echo@^1.0.0
+neuron remove example:echo@1.0.0
+```
+
+<Note type="info">
+The store path is `~/.neuron/capabilityRuntimes` (content-addressed by digest).
+</Note>
+
+## Next steps
+
+- [Wire Protocol](/guides/wire-protocol) - gRPC and JSON protocol details
+- [Architecture Overview](/architecture/overview) - How capability runtimes are executed
+- [Providers](/architecture/providers) - Process and WASM providers

@@ -1,0 +1,116 @@
+---
+title: "YAML Authoring"
+description: "Define Neuron assemblies and capabilities using canonical YAML."
+---
+
+## Overview
+
+YAML is the canonical, zero-tooling authoring surface for Neuron. Both YAML and TypeScript converge on the same canonical manifest before compilation.
+
+## Assembly structure
+
+```yaml
+apiVersion: neuron/v1
+kind: Assembly
+metadata:
+  name: my-assembly
+spec:
+  paramsSchema:
+    type: object
+    properties:
+      order:
+        type: object
+    required:
+      - order
+  capabilities:
+    - name: order.validate
+      spec:
+        capability runtime:
+          name: neuron:core:set
+          runtimeConfig:
+            concurrency: 1
+        paramsSchema:
+          type: object
+          properties:
+            order:
+              type: object
+          required:
+            - order
+        resultSchema:
+          type: object
+          properties:
+            order:
+              type: object
+            valid:
+              type: boolean
+          required:
+            - order
+            - valid
+    - name: payment.authorize
+      spec:
+        capability runtime:
+          name: neuron:core:set
+          runtimeConfig:
+            concurrency: 1
+        paramsSchema:
+          type: object
+          properties:
+            order:
+              type: object
+            amountCents:
+              type: integer
+            currency:
+              type: string
+          required:
+            - order
+            - amountCents
+            - currency
+        resultSchema:
+          type: object
+          properties:
+            order:
+              type: object
+            amountCents:
+              type: integer
+          required:
+            - order
+            - amountCents
+  bindings:
+    - from: order.validate
+      to: payment.authorize
+      via: {}
+```
+
+## Capabilities
+
+Capabilities declare their capability runtime, schemas, and any runtime configuration.
+
+## Bindings
+
+Bindings define explicit relationships between capabilities.
+
+## Project configuration
+
+`neuron.config.yaml` (or `.json`/`.yml`) defines the project name, version, language, assemblies, and capability runtime configuration.
+
+```yaml
+name: my-first-system
+version: 1.0.0
+lang: ts
+assemblies:
+  - name: my-first-system
+    entry: assembly.ts
+runtime:
+  execution:
+    timeout: 30m
+```
+
+<Note>
+Configuration follows a 5-layer merge: defaults, `~/.config/neuron/config.yaml`, project file, `NEURON_*` env vars, then CLI flags.
+</Note>
+
+## Next steps
+
+- [TypeScript SDK](/guides/typescript-sdk)
+- [Capability Runtimes](/guides/capability-runtimes)
+- [Configuration](/guides/configuration)
